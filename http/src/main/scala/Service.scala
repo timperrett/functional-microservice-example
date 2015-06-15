@@ -11,13 +11,18 @@ object ToDoService {
   def service(todo: ToDo)(config: todo.TConfig)(implicit executionContext: ExecutionContext = ExecutionContext.global) =
     HttpService {
       case req @ GET -> Root =>
-        Ok(Task.now("foo"))
+        Ok("Hello, World")
 
-      case GET -> Root / "list" =>
-        Ok("testing")
+      case GET -> Root / "list" => Ok("not implemented")
+        todo.list(config).map(Ok(_))
 
-      case GET -> Root / "create" =>
-        Ok("testing")
+      case req @ POST -> Root / "create" =>
+        req.decode[UrlForm] { data =>
+          data.values.get("content").flatMap(_.headOption) match {
+            case Some(a) => todo.create(a)(config).map(Ok(_))
+            case None    => Task.now(BadRequest("dsfds"))
+          }
+        }
 
     }
 }
