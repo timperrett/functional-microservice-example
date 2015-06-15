@@ -11,12 +11,9 @@ resolvers in Global ++= Seq(
 
 lazy val example = project.in(file(".")).aggregate(
   core,
-  http,
-  remotely
+  http
 )
 
 lazy val core = project
 
-lazy val http = project
-
-lazy val remotely = project
+lazy val http = project.dependsOn(core)

@@ -1,8 +1,6 @@
 package example
 
-import scalaz.concurrent.Task
-
-case class Config[M[_]](
+case class ToDoConfig[M[_]](
   maximumToDos: Int,
   repository: Repository[M]
 )

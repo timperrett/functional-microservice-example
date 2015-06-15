@@ -11,11 +11,11 @@ object Item {
 case class Item(id: Item.Id, content: String, createdAt: Long)
 
 class ToDo {
-  type ToDoK[A] = Kleisli[Task, Config[Task], A]
-  type ToDoConfig = Config[Task]
+  type TConfig = ToDoConfig[Task]
+  type ToDoK[A] = Kleisli[Task, TConfig, A]
 
-  protected def config: ToDoK[ToDoConfig] =
-    Kleisli.ask[Task, ToDoConfig]
+  protected def config: ToDoK[TConfig] =
+    Kleisli.ask[Task, TConfig]
 
   def create(content: String): ToDoK[Item.Id] = {
      for {
