@@ -11,7 +11,7 @@ object Item {
 case class Item(
   id: Item.Id,
   content: String,
-  createdAt: Long = System.currentTimeMillis)
+  createdAt: Long)
 
 class ToDo {
   type TConfig = ToDoConfig[Task]
@@ -20,10 +20,18 @@ class ToDo {
   protected def config: ToDoK[TConfig] =
     Kleisli.ask[Task, TConfig]
 
+  protected val currentTimeMillis: ToDoK[Long] =
+    Task.delay(System.currentTimeMillis).liftKleisli
+
+  protected val randomUUID: ToDoK[UUID] =
+    Task.delay(UUID.randomUUID).liftKleisli
+
   def create(content: String): ToDoK[Item.Id] = {
      for {
       a <- config
-      i  = Item(UUID.randomUUID, content)
+      u <- randomUUID
+      t <- currentTimeMillis
+      i  = Item(u, content, t)
       b <- a.repository.create(i).liftKleisli
     } yield b
   }
@@ -34,3 +42,4 @@ class ToDo {
       b <- a.repository.list.liftKleisli
     } yield b
 }
+
