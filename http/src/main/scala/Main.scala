@@ -18,7 +18,7 @@ object Main {
 
     val todo = new ToDo
 
-    BlazeBuilder.bindHttp(8080)
+    BlazeBuilder.bindHttp(8084)
       .mountService(ToDoService.service(todo)(config), "/")
       .run
       .awaitShutdown()

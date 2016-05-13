@@ -13,6 +13,8 @@ case class Item(
   content: String,
   createdAt: Long)
 
+case class ToDoForm(content: String)
+
 class ToDo {
   type TConfig = ToDoConfig[Task]
   type ToDoK[A] = Kleisli[Task, TConfig, A]
