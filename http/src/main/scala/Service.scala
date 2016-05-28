@@ -2,8 +2,10 @@ package example
 
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.auto._
+import java.util.UUID
 import org.http4s._
 import org.http4s.dsl._
+import scala.util.{Try, Success, Failure}
 
 object ToDoService {
 
@@ -20,6 +22,14 @@ object ToDoService {
 
       case GET -> Root / "list" =>
         Ok(todo.list(config).run)
+
+      case req@POST -> Root / "selectitem" =>
+        req.decode[UrlForm] { data =>  // UrlForm is not json
+          Try {UUID.fromString(data.getFirstOrElse("id",""))} match {
+            case Success(r) => Ok(todo.selectItem(r)(config).run)
+            case Failure(_) => BadRequest("Invalid UUID")
+          }
+        }
 
       case req@POST -> Root / "create" =>
         req.decode[ToDoForm] { data => Ok(todo.create(data.content)(config).run)

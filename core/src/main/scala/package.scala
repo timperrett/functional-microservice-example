@@ -1,3 +1,6 @@
+import scalaz.Kleisli
+import scalaz.concurrent.Task
+
 package object example {
 
   import annotation.tailrec
@@ -12,4 +15,5 @@ package object example {
 
     def get: A = atomic.get
   }
+
 }

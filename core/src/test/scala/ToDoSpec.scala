@@ -11,6 +11,6 @@ class ToDoSpec extends FlatSpec with Matchers {
   val todo = new ToDo
 
   it must "foo" in {
-    todo.list(config).run should equal (Nil)
+   todo.list(config).run should equal (Nil)
   }
 }
