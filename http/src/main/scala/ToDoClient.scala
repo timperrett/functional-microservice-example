@@ -2,8 +2,10 @@ package example
 
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.auto._
+import knobs.Config
 import org.apache.commons.lang3.StringEscapeUtils
 import org.http4s.dsl._
+
 // @todo import org.http4s.BasicCredentials
 //import org.http4s.client.blaze.PooledHttp1Client
 import org.http4s.client._
@@ -11,6 +13,7 @@ import org.http4s.client.blaze.{defaultClient => client}
 import org.http4s.EntityEncoder
 import org.http4s.Header
 import org.http4s.Headers
+
 // @todo import org.http4s.headers.Authorization
 import org.http4s.Method
 import org.http4s.Request
@@ -21,9 +24,6 @@ import scalaz.{-\/, \/, \/-}
 import scalaz.concurrent.Task
 import scalaz.{ReaderT, Kleisli}
 
-import java.io.File
-import knobs.{Required,FileResource,Config}
-
 trait ClientOp {
   def list(uri: Uri): Task[\/[String, List[Item]]]
 
@@ -33,7 +33,6 @@ trait ClientOp {
 }
 
 class ToDoClient extends ClientOp {
-
   implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]) = org.http4s.circe.jsonOf[A]
 
   implicit def circeJsonEncoder[A](implicit encoder: Encoder[A]) = org.http4s.circe.jsonEncoderOf[A]
@@ -105,9 +104,13 @@ object ToDoClientConfig {
 
   private class TestConfig(cfg: Config) extends ToDoClientConfig {
     override def getListUri = Uri.fromString(cfg.require[String](listUri)).getOrElse(null)
+
     override def getSelectItemUri = Uri.fromString(cfg.require[String](selectItemUri)).getOrElse(null)
+
     override def getCreateUri = Uri.fromString(cfg.require[String](createUri)).getOrElse(null)
+
     override def getTestData = cfg.require[List[String]](testData).toVector
+
     override def getClientOp: ClientOpR = ToDoClient
   }
 

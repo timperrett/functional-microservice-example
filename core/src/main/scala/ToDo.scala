@@ -50,5 +50,11 @@ class ToDo {
       a <- config
       b <- a.repository.selectItem(id).liftKleisli
     } yield b
+
+  def initTable(): ToDoK[Int] =
+    for {
+      a <- config
+      b <- a.repository.initTable().liftKleisli
+    } yield b
 }
 

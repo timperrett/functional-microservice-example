@@ -18,6 +18,9 @@ object Main {
 
     val todo = new ToDo
 
+    // Init db
+    todo.initTable().run(config).run
+
     BlazeBuilder.bindHttp(8084)
       .mountService(ToDoService.service(todo)(config), "/")
       .run

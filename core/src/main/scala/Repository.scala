@@ -13,10 +13,10 @@ abstract class Repository[M[_] : Monad] {
   def list: M[List[Item]]
   def selectItem(id: Item.Id): M[Option[Item]]
   def create(item: Item): M[Item.Id]
+  def initTable(): M[Int]
 }
 
 class InMemoryRepository extends Repository[Task] with DAO {
-
   // An in-memory database
   val xat = for {
     cfg <- knobs.loadImmutable(Required(FileResource(new File(absConfigFile)) or
@@ -26,21 +26,22 @@ class InMemoryRepository extends Repository[Task] with DAO {
   } yield DriverManagerTransactor[Task]("org.h2.Driver", "jdbc:h2:mem:todo;DB_CLOSE_DELAY=-1", usr, pwd)
 
   def list: Task[List[Item]] =
-    xat.flatMap(withInit(allItems.list).transact(_))
+    xat.flatMap(allItems.list.transact(_))
 
   def selectItem(id: Item.Id): Task[Option[Item]] =
-    xat.flatMap(withInit(oneItem(id).option).transact(_))
+    xat.flatMap(oneItem(id).option.transact(_))
 
 //  def stream: Process[ConnectionIO, Item] =
-//    withInit(allItems.process).transact(xa)
+//    allItems.process.transact(xa)
 
   def create(item: Item): Task[Item.Id] =
-    xat.flatMap(withInit(insertItem(item).run).transact(_)).as(item.id)
+    xat.flatMap(insertItem(item).run.transact(_)).as(item.id)
 
+  def initTable(): Task[Int] =
+    xat.flatMap(init.run.transact(_))
 }
 
 trait DAO {
-
   // On table not found, init the db and try again
   def withInit[A](a: ConnectionIO[A]): ConnectionIO[A] =
     a.exceptSomeSqlState {
@@ -67,15 +68,14 @@ trait DAO {
       VALUES (${item.id}, ${item.content}, ${item.createdAt})
     """.update
 
-  def init: Update0 = 
+  def init: Update0 =
     sql"""
-      CREATE TABLE items (
+      CREATE TABLE IF NOT EXISTS items (
         id         UUID    PRIMARY KEY,
         content    VARCHAR NOT NULL,
         created_at LONG    NOT NULL       
       )
     """.update
-
 }
 
 
