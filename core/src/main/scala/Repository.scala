@@ -1,12 +1,13 @@
 package example
 
+import doobie.imports._
+import doobie.contrib.h2.h2types._
+import java.io.File
+import knobs.{FileResource, _}
 import scalaz.Monad
 import scalaz.syntax.monad._
 import scalaz.concurrent.Task
-import scalaz.stream.Process
-
-import doobie.imports._
-import doobie.contrib.h2.h2types._
+//import scalaz.stream.Process
 
 abstract class Repository[M[_] : Monad] {
   def list: M[List[Item]]
@@ -15,22 +16,26 @@ abstract class Repository[M[_] : Monad] {
 }
 
 class InMemoryRepository extends Repository[Task] with DAO {
+
   // An in-memory database
-  val xa = DriverManagerTransactor[Task](
-    "org.h2.Driver", "jdbc:h2:mem:todo;DB_CLOSE_DELAY=-1", "sa", ""
-  )
+  val xat = for {
+    cfg <- knobs.loadImmutable(Required(FileResource(new File(absConfigFile)) or
+      ClassPathResource(configFile)) :: Nil)
+    usr = cfg.require[String]("h2username")
+    pwd = cfg.require[String]("h2password")
+  } yield DriverManagerTransactor[Task]("org.h2.Driver", "jdbc:h2:mem:todo;DB_CLOSE_DELAY=-1", usr, pwd)
 
   def list: Task[List[Item]] =
-    withInit(allItems.list).transact(xa)
+    xat.flatMap(withInit(allItems.list).transact(_))
 
   def selectItem(id: Item.Id): Task[Option[Item]] =
-    withInit(oneItem(id).option).transact(xa)
+    xat.flatMap(withInit(oneItem(id).option).transact(_))
 
 //  def stream: Process[ConnectionIO, Item] =
 //    withInit(allItems.process).transact(xa)
 
   def create(item: Item): Task[Item.Id] =
-    withInit(insertItem(item).run).transact(xa).as(item.id)
+    xat.flatMap(withInit(insertItem(item).run).transact(_)).as(item.id)
 
 }
 

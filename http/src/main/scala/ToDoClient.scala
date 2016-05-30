@@ -21,6 +21,9 @@ import scalaz.{-\/, \/, \/-}
 import scalaz.concurrent.Task
 import scalaz.{ReaderT, Kleisli}
 
+import java.io.File
+import knobs.{Required,FileResource,Config}
+
 trait ClientOp {
   def list(uri: Uri): Task[\/[String, List[Item]]]
 
@@ -79,33 +82,49 @@ class ToDoClient extends ClientOp {
 }
 
 trait ClientOpR {
-  def list(): ReaderT[Task, Config, \/[String, List[Item]]]
+  def list(): ReaderT[Task, ToDoClientConfig, \/[String, List[Item]]]
 
-  def selectItem(id: Item.Id): ReaderT[Task, Config, \/[String, Option[Item]]]
+  def selectItem(id: Item.Id): ReaderT[Task, ToDoClientConfig, \/[String, Option[Item]]]
 
-  def create(content: String): ReaderT[Task, Config, \/[String, Item.Id]]
+  def create(content: String): ReaderT[Task, ToDoClientConfig, \/[String, Item.Id]]
 }
 
-trait Config {
-  def listUri: Uri
+trait ToDoClientConfig {
+  def getListUri: Uri
 
-  def selectItemUri: Uri
+  def getSelectItemUri: Uri
 
-  def createUri: Uri
+  def getCreateUri: Uri
 
-  def clientOp: ClientOpR
+  def getClientOp: ClientOpR
+
+  def getTestData: Vector[String]
+}
+
+object ToDoClientConfig {
+
+  private class TestConfig(cfg: Config) extends ToDoClientConfig {
+    override def getListUri = Uri.fromString(cfg.require[String](listUri)).getOrElse(null)
+    override def getSelectItemUri = Uri.fromString(cfg.require[String](selectItemUri)).getOrElse(null)
+    override def getCreateUri = Uri.fromString(cfg.require[String](createUri)).getOrElse(null)
+    override def getTestData = cfg.require[List[String]](testData).toVector
+    override def getClientOp: ClientOpR = ToDoClient
+  }
+
+  def apply(cfg: Config): ToDoClientConfig = new TestConfig(cfg)
+
 }
 
 object ToDoClient extends ClientOpR {
-  override def list(): ReaderT[Task, Config, \/[String, List[Item]]] = Kleisli { cfg =>
-    new ToDoClient().list(cfg.listUri)
+  override def list(): ReaderT[Task, ToDoClientConfig, \/[String, List[Item]]] = Kleisli { cfg =>
+    new ToDoClient().list(cfg.getListUri)
   }
 
-  override def selectItem(id: Item.Id): ReaderT[Task, Config, \/[String, Option[Item]]] = Kleisli { cfg =>
-    new ToDoClient().selectItem(cfg.selectItemUri, id)
+  override def selectItem(id: Item.Id): ReaderT[Task, ToDoClientConfig, \/[String, Option[Item]]] = Kleisli { cfg =>
+    new ToDoClient().selectItem(cfg.getSelectItemUri, id)
   }
 
-  override def create(content: String): ReaderT[Task, Config, \/[String, Item.Id]] = Kleisli { cfg =>
-    new ToDoClient().create(cfg.createUri, content)
+  override def create(content: String): ReaderT[Task, ToDoClientConfig, \/[String, Item.Id]] = Kleisli { cfg =>
+    new ToDoClient().create(cfg.getCreateUri, content)
   }
 }

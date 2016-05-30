@@ -7,7 +7,7 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic" % circeVersion,
   "io.circe" %% "circe-parser" % circeVersion,
   "io.circe" %% "circe-java8" % circeVersion,
-  "oncue.knobs" %% "core" % "3.2.0",
+  "oncue.knobs" %% "core" % "3.6.1",
   "org.http4s" %% "http4s-server" % http4sVersion,
   "org.http4s" %% "http4s-dsl" % http4sVersion,
   "org.http4s" %% "http4s-blaze-server" % http4sVersion,
@@ -18,6 +18,6 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest"   % "2.2.5" % "test"
 )
 
-fork in run := true
+//fork in run := true
 
 //connectInput in run := true

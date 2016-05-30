@@ -8,8 +8,8 @@ object Main {
   def main(args: Array[String]): Unit = {
 
     val cfg = knobs.loadImmutable(Required(
-      FileResource(new File("/etc/todo/service.cfg")) or
-      ClassPathResource("todo.cfg")) :: Nil).run
+      FileResource(new File(absConfigFile)) or
+      ClassPathResource(configFile)) :: Nil).run
 
     val config = ToDoConfig(
       maximumToDos = cfg.require[Int]("todo.maximum-item-count"),
