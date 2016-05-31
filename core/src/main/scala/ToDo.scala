@@ -13,9 +13,12 @@ case class Item(
   content: String,
   createdAt: Long)
 
+case class ToDoForm(content: String)
+
 class ToDo {
   type TConfig = ToDoConfig[Task]
   type ToDoK[A] = Kleisli[Task, TConfig, A]
+  // @todo type ToDoKP[A] = Kleisli[Process[Task, ?], TConfig, A]
 
   protected def config: ToDoK[TConfig] =
     Kleisli.ask[Task, TConfig]
@@ -40,6 +43,18 @@ class ToDo {
     for {
       a <- config
       b <- a.repository.list.liftKleisli
+    } yield b
+
+  def selectItem(id: Item.Id): ToDoK[Option[Item]] =
+    for {
+      a <- config
+      b <- a.repository.selectItem(id).liftKleisli
+    } yield b
+
+  def initTable(): ToDoK[Int] =
+    for {
+      a <- config
+      b <- a.repository.initTable().liftKleisli
     } yield b
 }
 

@@ -1,3 +1,6 @@
+import scalaz.Kleisli
+import scalaz.concurrent.Task
+
 package object example {
 
   import annotation.tailrec
@@ -12,4 +15,11 @@ package object example {
 
     def get: A = atomic.get
   }
+
+  val configFile = "todo.cfg"
+  val absConfigFile = s"/etc/todo/${configFile}"
+  val testData = "testData"
+  val createUri = "createUri"
+  val selectItemUri = "selectItemUri"
+  val listUri = "listUri"
 }
