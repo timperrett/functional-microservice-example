@@ -7,9 +7,8 @@ import org.apache.commons.lang3.StringEscapeUtils
 import org.http4s.dsl._
 
 // @todo import org.http4s.BasicCredentials
-//import org.http4s.client.blaze.PooledHttp1Client
+import org.http4s.client.blaze.PooledHttp1Client
 import org.http4s.client._
-import org.http4s.client.blaze.{defaultClient => client}
 import org.http4s.EntityEncoder
 import org.http4s.Header
 import org.http4s.Headers
@@ -30,6 +29,8 @@ trait ClientOp {
   def selectItem(uri: Uri, id: Item.Id): Task[\/[String, Option[Item]]]
 
   def create(uri: Uri, content: String): Task[\/[String, Item.Id]]
+
+  def shutdown(): Task[Unit]
 }
 
 class ToDoClient extends ClientOp {
@@ -37,8 +38,9 @@ class ToDoClient extends ClientOp {
 
   implicit def circeJsonEncoder[A](implicit encoder: Encoder[A]) = org.http4s.circe.jsonEncoderOf[A]
 
+  lazy val client = PooledHttp1Client()
+
   def list(uri: Uri): Task[\/[String, List[Item]]] = {
-    //lazy val client = PooledHttp1Client()
     client.get(uri) {
       case Successful(resp) => resp.as[List[Item]].map(\/-(_))
       case resp => Task.now(-\/(resp.status.toString()))
@@ -46,7 +48,6 @@ class ToDoClient extends ClientOp {
   }
 
   def selectItem(uri: Uri, id: Item.Id): Task[\/[String, Option[Item]]] = {
-    //lazy val client = PooledHttp1Client()
     val req = POST(uri, UrlForm("id" -> id.toString))
     client(req).flatMap { response =>
       response match {
@@ -57,7 +58,6 @@ class ToDoClient extends ClientOp {
   }
 
   def create(uri: Uri, content: String): Task[\/[String, Item.Id]] = {
-    //lazy val client = PooledHttp1Client()
     EntityEncoder[String]
       .toEntity("{\"content\": \"" + StringEscapeUtils.escapeEcmaScript(content) + "\"}").flatMap {
       entity =>
@@ -78,6 +78,8 @@ class ToDoClient extends ClientOp {
         }
     }
   }
+
+  def shutdown(): Task[Unit] = client.shutdown
 }
 
 trait ClientOpR {
@@ -86,6 +88,8 @@ trait ClientOpR {
   def selectItem(id: Item.Id): ReaderT[Task, ToDoClientConfig, \/[String, Option[Item]]]
 
   def create(content: String): ReaderT[Task, ToDoClientConfig, \/[String, Item.Id]]
+
+  def shutdown(): ReaderT[Task, ToDoClientConfig, Unit]
 }
 
 trait ToDoClientConfig {
@@ -119,15 +123,21 @@ object ToDoClientConfig {
 }
 
 object ToDoClient extends ClientOpR {
+  val todoClient = new ToDoClient()
+
   override def list(): ReaderT[Task, ToDoClientConfig, \/[String, List[Item]]] = Kleisli { cfg =>
-    new ToDoClient().list(cfg.getListUri)
+    todoClient.list(cfg.getListUri)
   }
 
   override def selectItem(id: Item.Id): ReaderT[Task, ToDoClientConfig, \/[String, Option[Item]]] = Kleisli { cfg =>
-    new ToDoClient().selectItem(cfg.getSelectItemUri, id)
+    todoClient.selectItem(cfg.getSelectItemUri, id)
   }
 
   override def create(content: String): ReaderT[Task, ToDoClientConfig, \/[String, Item.Id]] = Kleisli { cfg =>
-    new ToDoClient().create(cfg.getCreateUri, content)
+    todoClient.create(cfg.getCreateUri, content)
+  }
+
+  override def shutdown(): ReaderT[Task, ToDoClientConfig, Unit] = Kleisli { cfg =>
+    todoClient.shutdown()
   }
 }

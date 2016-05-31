@@ -1,8 +1,8 @@
 package example
 
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import knobs.{ClassPathResource, FileResource, Required}
-import org.http4s.client.blaze.{defaultClient => client}
 import org.scalatest.{FlatSpec, Matchers}
 import scala.util.Try
 import scalaz.\/
@@ -12,23 +12,25 @@ import scalaz.syntax.traverse._
 
 class ServiceSpec extends FlatSpec with Matchers {
   info("Start todo service before test")
-  val t = Task.delay(Main.main(Array[String]()))
-  Task.fork(t).runAsync(println)
+  // The following may be a more expensive way to run a service since the system now monitors cancelService
+  // I don't see a way to call the server's shutdown method after it gets wrap in Task
+  val cancelService = new AtomicBoolean(false)
+  val t: Task[Unit] = Task.delay(Main.main(Array[String]()))
+  val running: Unit = Task.fork(t).runAsyncInterruptibly(println,cancelService)
   // Service can not start fast enough before hitting the test code, requires sleep:
   Thread.sleep(15000)
 
   "A todo service" must "be able to create todo items and serve the same items" in {
-
     val tcfg = knobs.loadImmutable(Required(
       FileResource(new File(absConfigFile)) or
         ClassPathResource(configFile)) :: Nil)
 
-    val testConfig = ToDoClientConfig(tcfg.run)
+    val testClient = ToDoClientConfig(tcfg.run)
 
     val tryResult = Try {
       info("Testing create items")
       val v: Vector[\/[String, Item.Id]] =
-        testConfig.getTestData.traverse(testConfig.getClientOp.create(_).run(testConfig)).run
+        testClient.getTestData.traverse(testClient.getClientOp.create(_).run(testClient)).run
       v.sequenceU.isRight should equal(true)
 
       // @todo info("Testing get all items using process")
@@ -36,7 +38,7 @@ class ServiceSpec extends FlatSpec with Matchers {
 
       info("Testing retrieved items have correct content")
       val b: Vector[\/[String, Option[Item]]] = v.map(_.flatMap(id =>
-        testConfig.getClientOp.selectItem(id).run(testConfig).run))
+        testClient.getClientOp.selectItem(id).run(testClient).run))
       val c: \/[String, Vector[Option[Item]]] = b.sequenceU
       val d: \/[String, Vector[Boolean]] =
         c.map(
@@ -44,7 +46,7 @@ class ServiceSpec extends FlatSpec with Matchers {
             o.map(oi =>
               if (oi.isEmpty)
                 false
-              else if (testConfig.getTestData.contains(oi.get.content))
+              else if (testClient.getTestData.contains(oi.get.content))
                 true
               else
                 false
@@ -53,9 +55,8 @@ class ServiceSpec extends FlatSpec with Matchers {
       d.getOrElse(Vector(false)).contains(false) should equal(false)
     }
 
-    // @todo not sure this is the right place to shutdown client
-    client.shutdownNow()
-    // @todo shutdown service
+    testClient.getClientOp.shutdown().run
+    cancelService.set(true)  // Probably useless because the next line is the last line
 
     tryResult.isSuccess should equal(true)
   }
