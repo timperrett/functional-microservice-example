@@ -13,7 +13,7 @@ object ToDoService {
       case req @ GET -> Root =>
         Ok("Hello, World")
 
-      case GET -> Root / "list" => Ok("not implemented")
+      case GET -> Root / "list" =>
         todo.list(config).map(Ok(_))
 
       case req @ POST -> Root / "create" =>
